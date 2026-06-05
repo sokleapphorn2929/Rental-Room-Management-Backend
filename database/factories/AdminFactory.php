@@ -1,0 +1,29 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Admin;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Hash;
+
+/**
+ * @extends Factory<Admin>
+ */
+class AdminFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'full_name' => fake()->name(),
+            'email'     => fake()->unique()->safeEmail(),
+            'password'  => Hash::make('password123'),
+            'phone'     => fake()->numerify('0#########'),
+            'created_at'=> now(),
+        ];
+    }
+}
