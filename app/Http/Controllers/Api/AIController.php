@@ -73,22 +73,15 @@ class AIController extends Controller
             ], 503);
         }
 
-        // =====================================================================
-        // BULLETPROOF PARSING LAYER
-        // =====================================================================
         $cleanedResponse = $aiResponse;
 
-        // 1. Strip markdown fences if Gemini added them anyway
         $cleanedResponse = str_replace(['```json', '```JSON', '```'], '', $cleanedResponse);
 
-        // 2. Clear invisible spaces/UTF-8 BOM tags that break strict parsers
         $cleanedResponse = preg_replace('/[\x{00A0}\x{200B}\x{FEFF}]/u', ' ', $cleanedResponse);
         $cleanedResponse = trim($cleanedResponse);
 
-        // 3. PARSE: Decodes the string into a true PHP associative array
         $cleanedData = json_decode($cleanedResponse, true);
 
-        // 4. CHECK: Validate if it's an actual, clean array structure
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($cleanedData)) {
             return response()->json([
                 'success' => false,
@@ -97,15 +90,12 @@ class AIController extends Controller
                 'json_error' => json_last_error_msg()
             ], 422);
         }
-        // =====================================================================
 
-        // Save the clean PHP array to MySQL. Eloquent converts it cleanly.
         $savedRecord = AiResponse::create([
             'prompt' => $validated['user_input'],
             'ai_payload' => $cleanedData, 
         ]);
 
-        // Return the clean array directly from the model
         return response()->json([
             'success' => true,
             'db_id' => $savedRecord->id,

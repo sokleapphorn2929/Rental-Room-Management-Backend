@@ -34,16 +34,13 @@ class AmenityController extends Controller
 
     public function storeFromAi(Request $request): JsonResponse
     {
-        // 1. Validate the parent target room and the raw text input
         $validated = $request->validate([
             'room_id'    => 'required|integer|exists:room,room_id', // Adjust table name to match your migration ('room' vs 'rooms')
             'user_input' => 'required|string|max:2000',
         ]);
 
-        // 2. Fetch the target room to pass context to the AI
         $room = Room::findOrFail($validated['room_id']);
 
-        // 3. Craft a strict system prompt tailored to your Amenity schema
         $systemContext = "You are a backend database utility. Analyze the amenity description text intended for Room Number '{$room->room_number}'.\n" .
                          "Extract the amenity features and return a strict JSON object with exactly these keys:\n" .
                          "1. 'amenity_name' (string, max 255 characters, e.g., 'Air Conditioner', 'Double Bed', 'Smart TV')\n" .
@@ -55,7 +52,6 @@ class AmenityController extends Controller
 
         $finalPrompt = $systemContext . $validated['user_input'];
 
-        // 4. Request payload generation from Gemini
         $aiResponse = $this->geminiService->generateText($finalPrompt);
 
         if (is_null($aiResponse)) {
@@ -65,7 +61,6 @@ class AmenityController extends Controller
             ], 503);
         }
 
-        // 5. Clean the string response (strip markdown wrappers & hidden characters)
         $cleanedResponse = $aiResponse;
         $cleanedResponse = str_replace(['```json', '```JSON', '```'], '', $cleanedResponse);
         $cleanedResponse = preg_replace('/[\x{00A0}\x{200B}\x{FEFF}]/u', ' ', $cleanedResponse);
@@ -73,7 +68,6 @@ class AmenityController extends Controller
 
         $amenityData = json_decode($cleanedResponse, true);
 
-        // 6. Verification check on JSON schema validity
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($amenityData)) {
             return response()->json([
                 'success' => false,
@@ -82,7 +76,6 @@ class AmenityController extends Controller
             ], 422);
         }
 
-        // 7. Save parsed features natively into your 'Amenity' table
         $amenity = Amenity::create([
             'room_id'      => $room->room_id, // Linked foreign key constraint
             'amenity_name' => $amenityData['amenity_name'] ?? 'Unknown Amenity',
@@ -90,7 +83,6 @@ class AmenityController extends Controller
             'added_date'   => $amenityData['added_date'] ?? now()->toDateString(),
         ]);
 
-        // 8. Return a successful 201 Created response
         return response()->json([
             "message" => "Amenity extracted and saved into database successfully!",
             "data" => $amenity
